@@ -1,0 +1,85 @@
+# Dependencies
+markdown:         kramdown
+highlighter:      rouge
+
+# Setup
+title:           YuJin
+tagline:          'A Jekyll theme'
+description:         >
+   유진스 <a href="https://github.com/YuJinSong412/" target="_blank">깃허브</a>를 이용한 <a href="https://yujinsong412.github.io/" target="_blank">블로그</a>
+url:              https://YuJinSong412.github.io
+baseurl:          # the optional subpath of your site, e.g. "/blog"
+                  # NB: This applies to all pages in your Jekyll site.
+                  # If you want to move just the blog index pages but keep
+                  # other pages at root, see the paginate_path and
+                  # sidebar_blog_link below.
+
+
+author:
+  name:           'Andrew Fong'
+  url:            https://twitter.com/fongandrewc
+
+
+# Fallback image and color
+image:              /assets/img/me.jpeg
+color:              '#4f86aa'               
+
+
+font_heading:        "'Lato', 'Sans-serif'"
+
+font:                "'Lato', 'Sans-serif'"
+
+# The string encoding what fonts to fetch from Google Fonts.
+# See: https://qwtel.com/hydejack/docs/configuration/
+google_fonts:        Lato
+
+# If you do not use a Google Fonts, uncomment the line below
+# no_google_fonts:     true
+
+# Set your Google Analytics id to receive `pageview` events.
+# To remove Google Anaylics from your page, remove the line below.
+google_analytics:    UA-92346434-1
+
+# Setting a disqus shortname will enable the comment section on pages with `comments: true` in the front matter
+disqus_shortname:    isme2n
+
+# This text will appear in the footer of every page. Markdown enabled.
+copyright:           '&copy; 2017. by isme2n'
+
+# Format of the permalinks
+permalink:           pretty
+
+  
+paginate:         5
+paginate_path:    '/page:num'
+                    
+
+collections:
+  featured_categories:
+    permalink:       /category/:name/
+    output:          true
+  featured_tags:
+    permalink:       /tag/:name/
+    output:          true
+  projects:
+    permalink:       /projects/:path/
+    output:          true
+
+
+plugins:
+  - jekyll-feed
+  - jekyll-gist
+  - jekyll-paginate
+
+# Custom vars
+version:            3.5.3
+sidebar_home_link:  true
+
+# sidebar_blog_link:  '/blog'   # By default, your home page is your blog
+                                # page. If you change your paginate_path,
+                                # set this to the root of the paginate_path
+                                # to enable a separate blog link.
+github:
+  repo:             https://github.com/fongandrew/hydeout
+
+commit_user : "YuJinSong412"
