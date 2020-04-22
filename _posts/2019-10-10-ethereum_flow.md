@@ -680,16 +680,502 @@ Saving artifacts...
  truffle(ganache)> RealEstate.deployed().then(function(instance) {app=instance;})
 undefined
 truffle(ganache)> app.owner.call() 
-//이렇게 하면 배포된 소유자가 누구인지 확인할 수 있음.
+'0x20bb5789f444e47a88c366f0bfe41ecb3c75bd4c'. //이렇게 하면 배포된 소유자가 누구인지 확인할 수 있음.
  ```
 앞으로 이 owner의 변수는 어떤 사람이 매물을 매입했을 때 그 매입가를 이 owner 계정으로 송금할 것이다. <br>
 정리하면, 가나슈의 첫번째 계정으로 배포하게 됐고 그 계정으로 real-estate 컨트랙의 생성자를 호출해서 이 컨트랙의 onwer 즉, 소유자를 가나슈의 첫번째 계정으로 설정했다. 이 뜻은 내가 사용하고 싶은 계정으로 언제든지 컨트랙의 소유자를 설정할 수 있다는 것인데, 이것은 나중에 볼 것이다. 
 
 
+---
+
+### 첫 테스팅 
+
+이어서, 우리의 첫 테스트 스크립트를 작성할 것이다. 블록체인의 스마트 컨트랙을 한번 배포하면, 배포된 주소에서는 수정이 불가능하기 때문에 최대한 많은 테스팅을 하고 메인넷에 배포해야된다.<br>
+테스트 폴더에 스크립트 파일을 하나 만들 것이다.
+
+> TrestRealEstate.js
+
+처음 필요한게 real-estate 컨트랙을 가져와서. 변수로 접근할 수 있도록 하는 것이다.
+
+ ```
+var RealEstate = artifacts.require("./RealEstate.sol"); //솔리디티 파일을 가져옴
+
+contract('RealEstate',function(accounts){
+var realEstateInstance; //전역변수를 하나 선언.
+
+    it("컨트랙의 소유자 초기화 테스팅",function(){
+        return RealEstate.deployed().then(function(instance) {
+            realEstateInstance = instance;
+            return realEstateInstance.owner.call();
+        }).then(function(owner){
+            assert.equal(onwer.toUpperCase(), accounts[0].toUpperCase(),"owner가 가나슈 첫번째 계정과 동일하지 않습니다.");
+        });
+    });
+});  //컨트랙을 테스트할 것인데, 2개의 인자를 받는다. 첫번째는 테스팅할 컨트랙의 이름, 2번째는 function을 받는데 계정이라는 인자를 콜백으로 받는다. accounts는 현재 연결된 노드에서 쓸 수 있는 계정들. 현재 가나슈 10개의 계정들을 말한다.
+ ```
+이제 터미널 열어서 트러플 테스트 커맨드를 통해서 통과하는지 볼 것이다.
+
+```
+Yujins-MacBookPro:real-estate song-yujin$ truffle test --network ganache
+Using network 'ganache'.
 
 
 
-이렇게 기본 탬플랫을 만들고 제이슨 데이터를 불러와서 템플렛을 완성시키고 UI에다가 10개의 매물 리스트를 보이게 해주었다.
+  Contract: RealEstate
+    ✓ 컨트랙의 소유자 초기화 테스팅
+
+
+  1 passing (70ms)
+
+```
+여기까지 컨트랙 테스트를 실행해봤다.
+
+
+---
+
+### 매물 구입
+
+매물 구입 함수를 만들어볼 것이다.
+
+```
+pragma solidity ^0.4.23;
+
+contract RealEstate {
+    struct Buyer{
+        address buyerAddress; //매입자 계정주소
+        bytes32 name;
+        uint age;
+    }
+    mapping (uint => Buyer) public buyerInfo; //상태변수로 매핑
+    address public owner;
+    address[10] public buyers; //상태변수로 address타입의 고정된 배열을 선언
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    function buyRealEstate(uint _id, bytes32 _name, uint _age) public payable{
+        require(_id >= 0 && _id <= 9); //매물의 아이디가 0~9사이인지 체크함.
+        buyers[_id] = msg.sender;
+        buyerInfo[_id] = Buyer(msg.sender, _name, _age);
+
+        owner.transfer(msg.value); //owner로 ether를 송금함
+
+    }   //ether를 이 함수로 보내는 것이다.
+}
+```
+
+이제 console에서 함수를 실행할 것이다.
+
+```
+Yujins-MacBookPro:real-estate song-yujin$ truffle migrate --compile-all --reset --network ganache
+Compiling ./contracts/Migrations.sol...
+Compiling ./contracts/RealEstate.sol...
+Writing artifacts to ./build/contracts
+
+Using network 'ganache'.
+
+Running migration: 1_initial_migration.js
+  Replacing Migrations...
+  ... 0x5f25402b78d79d8f57a39b688a2474ebc85f1784fcca522d196cdf1e80571c25
+  Migrations: 0xf9d00357bc93ece708686cff2b1f16d10783f2e0
+Saving successful migration to network...
+  ... 0x722ba993520212e220e518a7dcb065bba74e0f25e8cb91e2e2300b9bbbdca88b
+Saving artifacts...
+Running migration: 2_deploy_contracts.js
+  Replacing RealEstate...
+  ... 0x3bb3ed3f2eb85b763695b38a436ae28f0e37e9ef2b8bd57718c220a1ab8fb593
+  RealEstate: 0x955cb5c19a59d2fbee8dfac4dcee0e9e45b0775b
+Saving successful migration to network...
+  ... 0x512e40f5167705c1e908602c49a7a14bc3a9d4a81f0a1cd176197597586d9181
+Saving artifacts...
+(base) Yujins-MacBookPro:real-estate song-yujin$ truffle console --network ganache
+truffle(ganache)> RealEstate.deployed().then(function(instance) { app = instance; })
+undefined
+truffle(ganache)> app.buyRealEstate(0,"yujin",24,{from: web3.eth.accounts[1], value: web3.toWei(1.50, "ether")})
+{ tx:
+   '0x6acb704adadc0b117a6fc27830b08b673619ba2319edab4ffcf217f1e469b46a',
+  receipt:
+   { transactionHash:
+      '0x6acb704adadc0b117a6fc27830b08b673619ba2319edab4ffcf217f1e469b46a',
+     transactionIndex: 0,
+     blockHash:
+      '0xaa3925e4d1a65e2cff08d384ba194a087ce3ac8cc06cc4b038e08dc3d640710c',
+     blockNumber: 72,
+     from: '0x2dcca9b61e50d79a90a813fcd6a42c3a3ac52e6f',
+     to: '0x955cb5c19a59d2fbee8dfac4dcee0e9e45b0775b',
+     gasUsed: 110901,
+     cumulativeGasUsed: 110901,
+     contractAddress: null,
+     logs: [],
+     status: '0x1',
+     logsBloom:
+      '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+     v: '0x1b',
+     r:
+      '0xf667ca2e6ce37d172d993dbdf3f8ae26629c051ce270a57de070381b0f92925d',
+     s:
+      '0x57774900756b0f065e4e88fec775c723a84d840c144fed32611c32534ad3ad3a' },
+  logs: [] }
+truffle(ganache)> 
+```
+
+
+---
+
+### 이벤트(Event)
+
+매물을 어떤 유저가 매입하면 매입이 완료되었다는 메시지를 생성할 것이다. 이벤트를 통해서 할 것이다. 생성자 위에다가 이벤트 구조를 만들어줄 것이다.
+
+참고로, 어떤 이벤트가 발생되었을 때 이벤트 내용도 블록 안에 저장된다. 그래서 log 기록한다는 이름을 붙인 것. 
+
+```
+pragma solidity ^0.4.23;
+
+contract RealEstate {
+    struct Buyer{
+        address buyerAddress; //매입자 계정주소
+        bytes32 name;
+        uint age;
+    }
+    mapping (uint => Buyer) public buyerInfo; //상태변수로 매핑
+    address public owner;
+    address[10] public buyers; //상태변수로 address타입의 고정된 배열을 선언
+
+    //완료메시지로 어떤 계정에서 몇번 매물을 매입했습니다. 가 나올 것
+    event LogBuyRealEstate( 
+        address _buyer,
+        uint _id
+    );
+
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    function buyRealEstate(uint _id, bytes32 _name, uint _age) public payable{
+        require(_id >= 0 && _id <= 9); //매물의 아이디가 0~9사이인지 체크함.
+        buyers[_id] = msg.sender;
+        buyerInfo[_id] = Buyer(msg.sender, _name, _age);
+
+        owner.transfer(msg.value); //owner로 ether를 송금함
+        emit LogBuyRealEstate(msg.sender, _id);
+    }   //ether를 이 함수로 보내는 것이다.
+}
+```
+
+이제 console에서 이 이벤트를 어떻게 발생시키는지 확인할 것이다.
+
+```
+truffle(ganache)> migrate --compile-all --reset
+Compiling ./contracts/Migrations.sol...
+Compiling ./contracts/RealEstate.sol...
+Writing artifacts to ./build/contracts
+
+Using network 'ganache'.
+
+Running migration: 1_initial_migration.js
+  Replacing Migrations...
+  ... 0xd4ed279f4a332e5709b9062c80726ff43374771f10ac629cd4ccc95001759f08
+  Migrations: 0xe8222a494e47e919fc6bac97fc8df2ea647e31ae
+Saving successful migration to network...
+  ... 0x9620d881710316e84198df5f76aeb527729cc29f1caf588514a18cffc119b0ae
+Saving artifacts...
+Running migration: 2_deploy_contracts.js
+  Replacing RealEstate...
+  ... 0x188b5bc96c6b4c35641d4e877d69205a7a1b863094ec4b0c5868753f93c1d0f2
+  RealEstate: 0xc357bcf3242b8c42d2a560b6762484b716685e5b
+Saving successful migration to network...
+  ... 0xc7b97d6b1608813d559ad430d19009c648e232dbb6c644e0d6d37b5626b5f060
+Saving artifacts...
+truffle(ganache)> RealEstate.deployed().then(function(instance) { app = instance; })
+undefined
+truffle(ganache)> app.LogBuyRealEstate({}, {fromBlock: 0, toBlock: 'latest'}).watch(function(error, event) { console.log(event); })
+Filter {
+  requestManager:
+   RequestManager {
+     provider: Provider { provider: [HttpProvider] },
+     polls: {},
+     timeout: null },
+  options:
+   { topics:
+      [ '0x0868a2b77ef5243ab424f87952a349bc823a92fd01d9b45d2fec78b8eafb586b' ],
+     from: undefined,
+     to: undefined,
+     address: '0xc357bcf3242b8c42d2a560b6762484b716685e5b',
+     fromBlock: '0x0',
+     toBlock: 'latest' },
+  implementation:
+   { newFilter:
+      { [Function: send] request: [Function: bound ], call: [Function: newFilterCall] },
+     uninstallFilter:
+      { [Function: send] request: [Function: bound ], call: 'eth_uninstallFilter' },
+     getLogs:
+      { [Function: send] request: [Function: bound ], call: 'eth_getFilterLogs' },
+     poll:
+      { [Function: send] request: [Function: bound ], call: 'eth_getFilterChanges' } },
+  filterId: null,
+  callbacks: [ [Function] ],
+  getLogsCallbacks: [],
+  pollFilters: [],
+  formatter: [Function: bound ] }
+truffle(ganache)> app.buyRealEstate(0,"yujin",24,{from:web3.eth.accounts[1], value: web3.toWei(1.50, "ether")})
+{ tx:
+   '0x35b42c2785cd7c8112f107fb00a49aca7d7b23662ff28c39b3e45c75aa1d0ce1',
+  receipt:
+   { transactionHash:
+      '0x35b42c2785cd7c8112f107fb00a49aca7d7b23662ff28c39b3e45c75aa1d0ce1',
+     transactionIndex: 0,
+     blockHash:
+      '0x89079d8277dd5690aea093ef4a99beb2a50ce452e98d8184a35b3270bc80ccfa',
+     blockNumber: 77,
+     from: '0x2dcca9b61e50d79a90a813fcd6a42c3a3ac52e6f',
+     to: '0xc357bcf3242b8c42d2a560b6762484b716685e5b',
+     gasUsed: 112255,
+     cumulativeGasUsed: 112255,
+     contractAddress: null,
+     logs: [ [Object] ],
+     status: '0x1',
+     logsBloom:
+      '0x00000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000',
+     v: '0x1c',
+     r:
+      '0x5aca08e765d32125004e892522f035e65b9b3fc144b02feb08576b0e83ca2796',
+     s:
+      '0x2cb76a4e90c6517028a970117d4263c50122a5b97d2253bf7fc9a9b49c20fe68' },
+  logs: 		//이벤트의 모든 정보들이 나와있음, 블록에 저장함.
+   [ { logIndex: 0,
+       transactionIndex: 0,
+       transactionHash:
+        '0x35b42c2785cd7c8112f107fb00a49aca7d7b23662ff28c39b3e45c75aa1d0ce1',
+       blockHash:
+        '0x89079d8277dd5690aea093ef4a99beb2a50ce452e98d8184a35b3270bc80ccfa',
+       blockNumber: 77,
+       address: '0xc357bcf3242b8c42d2a560b6762484b716685e5b',
+       type: 'mined',
+       event: 'LogBuyRealEstate',
+       args: [Object] } ] }
+truffle(ganache)> { logIndex: 0,	//이벤트 초기화했을 때 나온 정보..
+  transactionIndex: 0,
+  transactionHash:
+   '0x35b42c2785cd7c8112f107fb00a49aca7d7b23662ff28c39b3e45c75aa1d0ce1',
+  blockHash:
+   '0x89079d8277dd5690aea093ef4a99beb2a50ce452e98d8184a35b3270bc80ccfa',
+  blockNumber: 77,
+  address: '0xc357bcf3242b8c42d2a560b6762484b716685e5b',
+  type: 'mined',
+  event: 'LogBuyRealEstate',
+  args:	//두 필드가 잘 작동되는 것을 확인할 수 있음.
+   { _buyer: '0x2dcca9b61e50d79a90a813fcd6a42c3a3ac52e6f',
+     _id: BigNumber { s: 1, e: 0, c: [Array] } } }
+```
+
+---
+
+### 읽기전용 함수들
+
+컨트랙의 마지막 함수들을 만들 것이다.  <br>
+첫번째는 매입자의 정보를 불러오는 함수-> 어떻게 가져오나? buyerInfo를 이용한다.
+
+```
+pragma solidity ^0.4.23;
+
+contract RealEstate {
+    struct Buyer{
+        address buyerAddress; //매입자 계정주소
+        bytes32 name;
+        uint age;
+    }
+    mapping (uint => Buyer) public buyerInfo; //상태변수로 매핑
+    address public owner;
+    address[10] public buyers; //상태변수로 address타입의 고정된 배열을 선언
+
+    //완료메시지로 어떤 계정에서 몇번 매물을 매입했습니다. 가 나올 것
+    event LogBuyRealEstate( 
+        address _buyer,
+        uint _id
+    );
+
+    constructor() public {
+        owner = msg.sender;
+    }
+
+    function buyRealEstate(uint _id, bytes32 _name, uint _age) public payable{
+        require(_id >= 0 && _id <= 9); //매물의 아이디가 0~9사이인지 체크함.
+        buyers[_id] = msg.sender;
+        buyerInfo[_id] = Buyer(msg.sender, _name, _age);
+
+        owner.transfer(msg.value); //owner로 ether를 송금함
+        emit LogBuyRealEstate(msg.sender, _id);
+    }   //ether를 이 함수로 보내는 것이다.
+
+    function getBuyerInfo(uint _id) public view returns (address, bytes32, uint){
+        //매개변수로 받은 매물 아이디를 사용해서 키값으로 쓰고 해당 value값을 가져온다.
+        Buyer memory buyer = buyerInfo[_id]; //id를 넘겨서 키값으로 쓰고 매입자를 불러와서 저장..
+
+        return (buyer.buyerAddress, buyer.name, buyer.age); 
+    }
+
+//매입자들의 계정을 저장하는 배열
+    function getAllBuyers() public view returns (address[10]){
+        return buyers;
+    }
+}
+```
+
+이제 console에서 함수들을 실행할 것.
+
+
+---
+
+### 마무리 테스팅
+
+```
+var RealEstate = artifacts.require("./RealEstate.sol");
+
+contract('RealEstate', function(accounts) { 
+    var realEstateInstance;
+
+    it("컨트랙의 소유자 초기화 테스팅", function() {
+        return RealEstate.deployed().then(function(instance) {     
+            realEstateInstance = instance;
+            return realEstateInstance.owner.call();
+        }).then(function(owner) {
+            assert.equal(owner.toUpperCase(), accounts[0].toUpperCase(), "owner가 가나슈 첫번째 계정과 동일하지 않습니다.");       
+        });
+    });   
+
+    it("가나슈 두번째 계정으로 매물 아이디 0번 매입 후 이벤트 생성 및 매입자 정보와 buyers 배열 테스팅", function() {
+        return RealEstate.deployed().then(function(instance) {
+            realEstateInstance = instnace;
+            return realEstateInstance.buyRealEstate(0, "yujin", 24, {from: accounts[1], value: web3.toWei(1.50, "ether")});
+        }).then(function(receipt){
+            assert.equal(receipt.logs.length, 1, "이벤트 하나가 생성되지 않았습니다.");
+            assert.equal(receipt.logs[0].event, "LogBuyRealEstate", "이벤트가 LogBuyRealEstate가 아닙니다.");
+            assert.equal(receipt.logs[0].args._buyer, accounts[1], "매입자가 가나슈 두번째 계정이 아닙니다.");
+            assert.equal(receipt.logs[0].args._id, 0, "매물 아이디가 0이 아닙니다.");
+            return realEstateInstance.getBuyerInfo(0);
+        }).then(function(buyerInfo){
+            assert.equal(buyerInfo[0].toUpperCase(), accounts[1].toUpperCase(), "매입자의 계정이 가나슈 두번째 계정과 일치하지 않습니다.");
+            assert.equal(web3.toAscii(buyerInfo[1]).replace(/\0/g, ''), "yujin", "매입자의 이름이 yujin이 아닙니다.");
+            assert.equal(buyerInfo[2], 24, "매입자의 나이가 24살이 아닙니다.");
+            return realEstateInstance.getAllBuyers();
+        }).then(function(buyers){
+            assert.equal(buyers[0].toUpperCase(), accounts[1].toUpperCase(), " Buyers 배열 첫번째 인덱스의 계정이 가나슈 듀번째 계정과 일치하지 않습니다. ")
+        });
+    })
+}); 
+```
+
+
+---
+
+## 이더리움 부동산 프론트앤드 개발
+
+노드 모듈을 install 해야된다.  packeage.json 안에 있는 lite-server를 다운 받아야한다. terminal에서
+
+```
+Yujins-MacBookPro:real-estate song-yujin$ npm install
+npm WARN deprecated fsevents@1.2.12: fsevents 1 will break on node v14+. Upgrade to fsevents 2 with massive improvements.
+
+> fsevents@1.2.12 install /Users/song-yujin/Documents/Blockchain/real-estate/node_modules/fsevents
+> node-gyp rebuild
+
+gyp WARN download NVM_NODEJS_ORG_MIRROR is deprecated and will be removed in node-gyp v4, please use NODEJS_ORG_MIRROR
+gyp WARN download NVM_NODEJS_ORG_MIRROR is deprecated and will be removed in node-gyp v4, please use NODEJS_ORG_MIRROR
+No receipt for 'com.apple.pkg.CLTools_Executables' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLILeo' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLI' found at '/'.
+
+gyp: No Xcode or CLT version detected!
+gyp ERR! configure error 
+gyp ERR! stack Error: `gyp` failed with exit code: 1
+gyp ERR! stack     at ChildProcess.onCpExit (/usr/local/lib/node_modules/npm/node_modules/node-gyp/lib/configure.js:345:16)
+gyp ERR! stack     at ChildProcess.emit (events.js:198:13)
+gyp ERR! stack     at Process.ChildProcess._handle.onexit (internal/child_process.js:248:12)
+gyp ERR! System Darwin 19.4.0
+gyp ERR! command "/usr/local/bin/node" "/usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js" "rebuild"
+gyp ERR! cwd /Users/song-yujin/Documents/Blockchain/real-estate/node_modules/fsevents
+gyp ERR! node -v v10.16.3
+gyp ERR! node-gyp -v v3.8.0
+gyp ERR! not ok 
+npm notice created a lockfile as package-lock.json. You should commit this file.
+npm WARN realestate@1.0.0 No description
+npm WARN realestate@1.0.0 No repository field.
+npm WARN optional SKIPPING OPTIONAL DEPENDENCY: fsevents@1.2.12 (node_modules/fsevents):
+npm WARN optional SKIPPING OPTIONAL DEPENDENCY: fsevents@1.2.12 install: `node-gyp rebuild`
+npm WARN optional SKIPPING OPTIONAL DEPENDENCY: Exit status 1
+
+added 335 packages from 271 contributors and audited 3508 packages in 12.056s
+found 1 low severity vulnerability
+  run `npm audit fix` to fix them, or `npm audit` for details
+```
+
+노드 모듈 폴더가 생성되면서 안에 라이트 서버를 포함한 기타 댑 실행에 필요한 모듈들이 설치된다. <br>
+폴더가 생성되면서 안에 여러가지 모듈들이 설치되었다.
+
+<mark>app.js 파일</mark>이 앞으로 댑을 움직일 엔진 같은 존재이다.
+
+real-estate.json 각각의 데이터를 가져와서 우리가 만든 필드에 넣어서 매물 리스트에 넣을 것이다.
+
+```
+<div id="template" style="display: none;">
+      <div class="col-sm-6 col-md-4 col-lg-3">
+        <div class="panel panel-success panel-realEstate">
+          <div class="panel-heading">
+            <h3 class="panel-title">매물</h3>
+          </div>
+          <div class="panel-body">
+            <img style="width: 100%;" src="">
+            <br/><br/>
+            <strong>아이디</strong>: <span class="id"></span><br/>
+            <strong>종류</strong>: <span class="type"></span><br/>
+            <strong>면적(m2)</strong>: <span class="area"></span><br/>
+            <strong>가격(ETH)</strong>: <span class="price"></span><br/>
+            <button class="btn btn-info btn-buy"
+                    type="button"
+                    data-toggle="modal"
+                    data-target="#buyModal">
+                    매입
+            </button>
+            <button class="btn btn-info btn-buyerInfo"
+                    type="button"
+                    data-toggle="modal"
+                    data-target="#buyerInfoModal"
+                    style="display: none;">
+                    매입자 정보
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    
+    init: function() {
+    $.getJSON('../real-estate.json', function(data){
+      var list = $('#list');
+      var template = $('#template');
+
+      for (i = 0; i < data.length; i++){
+        template.find('img').attr('src',data[i].picutre);
+        template.find('.id').text(data[i].id);
+        template.find('.type').text(data[i].type);
+        template.find('.area').text(data[i].area);
+        template.find('.price').text(data[i].price);
+        
+        list.append(template.html());
+      }
+    })
+  },
+```
+
+터미널로 실행한다.
+
+```
+ Yujins-MacBookPro:real-estate song-yujin$ npm run dev
+```
+
+
 
 ---
 
