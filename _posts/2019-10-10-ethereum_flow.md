@@ -369,7 +369,7 @@ module.exports = function(deployer) {
 
 **- 배포!**
 
-마이컨트랙을 배포할 것이다. 파일 안에 프로젝트 초기화한 곳으로 이동한다. 새로운 터미널로 
+마이컨트랙을 배포할 것이다. 파일 안에 프로젝트 초기화한 곳으로 이동한다. 새로운 터미널로 blockchain/truffle 폴더로 들어가서 입력해준다.
 
 ```
 > truffle develop
@@ -630,20 +630,63 @@ truffle과 web.js는 노드와 소통하기 위한 필수적인 파일이다.
 
 ### 컨트랙 소유자 설정 
 
-생성자의 역할이 class의 맴버필드를 초기화하는 사용된다. 솔리디티 생성자도 같다. 다른 언어와 다르게 배포할 때 단 1번만 실행하고 끝이나고 그 이후로는 호출할 수 가 없다. 이 이점을 이용하여 컨트랙의 소유자를 설정할 수 있다. 
+생성자의 역할이 class의 맴버필드를 초기화하는 사용된다. 솔리디티 생성자도 같다. 다른 언어의 생성자와 다르게 배포할 때 단 1번만 실행하고 끝이나고 그 이후로는 호출할 수가 없다. 이 이점을 이용하여 컨트랙의 소유자를 설정할 수 있다. 
 즉, 배포할 때 사용된 계정이 이 컨트랙의 소유자가 될 수 있도록 하는 것이다.
 
 ```
 pragma solidity ^0.4.23;
 
 contract RealEstate {
-    address public owner; //자동으로 getter함수가 만들어지게된다.public 
+    address public owner; //상태변수에 public 을 붙이면 자동으로 getter함수가 만들어지게된다.
 
     constructor() public{
-        owner = msg.sender;  //우리가 컨트랙을 배포할 때 어떤 계정을 통해서 배포해야됨. 배포하는 단계에서 생성ㅈㅏ가 호출되는데 생성자 안에 있는 이 라인을 읽는다. 주소값을 상태변수 owner에 대입하는 과정. msg.sender는 현재 사용하는 계정으로 이 컨트랙 안에 있는 생성자나 함수를  
+        owner = msg.sender;  //우리가 컨트랙을 배포할 때 어떤 계정을 통해서 배포해야됨. 배포하는 단계에서 생성자가 호출되는데 생성자 안에 있는 이 라인을 읽는다. 주소값을 상태변수 owner에 대입하는 과정. msg.sender는 현재 사용하는 계정으로 이 컨트랙 안에 있는 생성자나 함수를 불러오는 것, 값은 주소형이다.
     }
 }
 ```
+
+이제 가나슈를 실행해서 가나슈 노드에 우리가 만든 컨트랙을 배포한다. 그리고 owner 변수에 계정주소가 잘 저장이 되었나 확인해 볼 것이다.
+
+ ```
+ Yujins-MacBookPro:real-estate song-yujin$ truffle migrate --network ganache
+Compiling ./contracts/Migrations.sol...
+Compiling ./contracts/RealEstate.sol...
+Writing artifacts to ./build/contracts
+
+Using network 'ganache'.
+
+Running migration: 1_initial_migration.js
+  Deploying Migrations...
+  ... 0x80351c199218cf85bd21f25ab79cc64354407020362b688e6121bdfb957e8e63
+  Migrations: 0x527b5e352f7c3cd9cc6216decc8e0a9ee1714874
+Saving successful migration to network...
+  ... 0x999c47e43e0df4955878d39fdf55e7f8c9eb1d380f3b723a83f9eb8a1360793f
+Saving artifacts...
+Running migration: 2_deploy_contracts.js
+  Deploying RealEstate...
+  ... 0x8856e57f82851f4fd0f570f7e93174234cbcfd060d4ca5365729feca109f67d1
+  RealEstate: 0xd8efcddd4ec55b13ca75cca6fd6352c48ca2a5ea
+Saving successful migration to network...
+  ... 0xbfec8a505d3369db7e1d6e0c85d00cd51f8256a0b39541f06441f489fcd57c7e
+Saving artifacts...
+ ```
+ 
+ 첫번째 계정이 default로 배포하는데 사용되면서 Balance가 줄어들었다.
+ 
+ 이제 truffle console 로 들어가서..
+ 
+ ```
+ Yujins-MacBookPro:real-estate song-yujin$ truffle console --network ganache
+ truffle(ganache)> RealEstate.deployed().then(function(instance) {app=instance;})
+undefined
+truffle(ganache)> app.owner.call() 
+//이렇게 하면 배포된 소유자가 누구인지 확인할 수 있음.
+ ```
+앞으로 이 owner의 변수는 어떤 사람이 매물을 매입했을 때 그 매입가를 이 owner 계정으로 송금할 것이다. <br>
+정리하면, 가나슈의 첫번째 계정으로 배포하게 됐고 그 계정으로 real-estate 컨트랙의 생성자를 호출해서 이 컨트랙의 onwer 즉, 소유자를 가나슈의 첫번째 계정으로 설정했다. 이 뜻은 내가 사용하고 싶은 계정으로 언제든지 컨트랙의 소유자를 설정할 수 있다는 것인데, 이것은 나중에 볼 것이다. 
+
+
+
 
 
 이렇게 기본 탬플랫을 만들고 제이슨 데이터를 불러와서 템플렛을 완성시키고 UI에다가 10개의 매물 리스트를 보이게 해주었다.
