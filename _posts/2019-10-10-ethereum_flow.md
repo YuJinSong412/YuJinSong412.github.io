@@ -1175,8 +1175,342 @@ real-estate.json 각각의 데이터를 가져와서 우리가 만든 필드에 
  Yujins-MacBookPro:real-estate song-yujin$ npm run dev
 ```
 
+10개의 리스트가 잘 나온다. 기본 탬플릿을 만들고 Json 데이터를 가져와서 탬플릿을 완성시키고 UI에다가 10개의 리스트가 잘 나오도록 해주었다.
 
 
+---
+
+## Web3 & 컨트랙 인스턴스화
+
+web3.min.js 파일이 이더리움 블록체인과 소통할 수 있게 해주는 라이브러리이다. 스마트컨트랙과 연결해주는 중요한 파일이다. 우리 댑에서 쓸 수 있도록 먼저 인스턴스화 시킨다. 
+
+
+```
+App = {
+  web3Provider: null,
+  contracts: {},
+	
+  init: function() {
+    $.getJSON('../real-estate.json', function(data){
+      var list = $('#list');
+      var template = $('#template');
+
+      for (i = 0; i < data.length; i++){
+        template.find('img').attr('src',data[i].picture);
+        template.find('.id').text(data[i].id);
+        template.find('.type').text(data[i].type);
+        template.find('.area').text(data[i].area);
+        template.find('.price').text(data[i].price);
+        
+        list.append(template.html());
+      }
+    })
+
+    return App.initWeb3();
+  },
+
+  initWeb3: function() {
+    if (typeof web3 != 'undefined' ){
+      App.web3Provider = web3.currentProvider;
+      web3 = new Web3(web3.currentProvider);
+    } else{
+      App.web3Provider = new web3.providers.HttpProvider('http://localhost:8545');
+      web3 = new Web3(App.web3Provider);
+    }
+
+    return App.initContract;
+  },
+  //이것을 통해 댑에서 이더리움 블록체인과 소통할 수 있게 되었다.
+
+  //우리가 만든 스마트컨트랙을 인스턴스화할 함수. 그래야 web3가 컨트랙을 어디에서 찾아야하고 어떻게 작동하는지 알 수 있다.
+  initContract: function() {
+		$.getJSON('RealEstate.json', function(data){
+      App.contracts.RealEstate = TruffleContract(data);
+      App.contracts.RealEstate.setProvider(App.web3Provider);
+    })
+  },
+
+  buyRealEstate: function() {	
+
+  },
+
+  loadRealEstates: function() {
+	
+  },
+	
+  listenToEvents: function() {
+	
+  }
+};
+
+$(function() {
+  $(window).load(function() {
+    App.init();
+  });
+});
+
+```
+
+
+---
+
+## 매입자 정보 모달 및 데이터 전달
+
+프론트앤드에서 매물 구입 함수에 데이터를 어떻게 보낼 수 있는지 만들어볼 것이다. 블록체인에 정보들을 저장시키는 중요한 것이다.
+
+> http://bootstrapdocs.com/v3.3.6/docs/javascript/#modals
+
+사이트에 들어가서 예제를 복사한다. 수정한 것으로!
+
+```
+<div class="modal fade" tabindex="-1" role="dialog" id="buyModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Modal title</h4>
+      </div>
+      <div class="modal-body">
+        <p>One fine body&hellip;</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary">Save changes</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+```
+
+우리가 만든 index.html의 template 밑에다가 수정해서 넣어준다.
+
+```
+    <div class="modal fade" tabindex="-1" role="dialog" id="buyModal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">매입자 정보</h4>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="id" />
+            <input type="hidden" id="price" />
+            <input type="text" class="form-control" id="name" placeholder="이름" /><br/>
+            <input type="number" class="form-control" id="age" placeholder="나이" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">닫기</button>
+            <button type="button" class="btn btn-primary" onclick="App.buyRealEstate(); return false;">제출</button>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+```
+
+```
+App = {
+  web3Provider: null,
+  contracts: {},
+	
+  init: function() {
+    $.getJSON('../real-estate.json', function(data){
+      var list = $('#list');
+      var template = $('#template');
+
+      for (i = 0; i < data.length; i++){
+        template.find('img').attr('src',data[i].picture);
+        template.find('.id').text(data[i].id);
+        template.find('.type').text(data[i].type);
+        template.find('.area').text(data[i].area);
+        template.find('.price').text(data[i].price);
+        
+        list.append(template.html());
+      }
+    })
+
+    return App.initWeb3();
+  },
+
+  initWeb3: function() {
+    if (typeof web3 != 'undefined' ){
+      App.web3Provider = web3.currentProvider;
+      web3 = new Web3(web3.currentProvider);
+    } else{
+      App.web3Provider = new web3.providers.HttpProvider('http://localhost:8545');
+      web3 = new Web3(App.web3Provider);
+    }
+
+    return App.initContract;
+  },
+  //이것을 통해 댑에서 이더리움 블록체인과 소통할 수 있게 되었다.
+
+  //우리가 만든 스마트컨트랙을 인스턴스화할 함수. 그래야 web3가 컨트랙을 어디에서 찾아야하고 어떻게 작동하는지 알 수 있다.
+  initContract: function() {
+		$.getJSON('RealEstate.json', function(data){
+      App.contracts.RealEstate = TruffleContract(data);
+      App.contracts.RealEstate.setProvider(App.web3Provider);
+    });
+  },
+
+  buyRealEstate: function() {	
+    var id = $('#id').val();
+    var name = $('#name').val();
+    var price = $('#price').val();
+    var age = $('#age').val();
+
+    console.log(id);
+    console.log(price);
+    console.log(name);
+    console.log(age);
+
+    $('#name').val('');
+    $('#age').val('');
+
+  },
+
+  loadRealEstates: function() {
+	
+  },
+	
+  listenToEvents: function() {
+	
+  }
+};
+
+$(function() {
+  $(window).load(function() {
+    App.init();
+  });
+
+  $('#buyModal').on('show.bs.modal', function(e) {
+    var id = $(e.relatedTarget).parent().find('.id').text();
+    var price = web3.toWei(parseFloat($(e.relatedTarget).parent().find('.price').text() || 0), "ether");
+
+    $(e.currentTarget).find('#id').val(id);
+    $(e.currentTarget).find('#price').val(price);
+  });
+});
+```
+
+매입자 이름, 나이를 모달에서 입력하고 제출 버튼 입력하면 총 4개의 데이터를 매물 구입 함수에서 받을 수 있도록 했다.<br>
+ 그 다음에는 받은 값들을 컨트랙 매물 구입 함수에 매개변수로 넘기겠다.
+ 
+ ---
+
+## 컨트랙 매물구입함수 연결
+ 
+ ```
+App = {
+  web3Provider: null,
+  contracts: {},
+	
+  init: function() {
+    $.getJSON('../real-estate.json', function(data) {
+      var list = $('#list');
+      var template = $('#template');
+
+      for (i = 0; i < data.length; i++) {
+        template.find('img').attr('src', data[i].picture);
+        template.find('.id').text(data[i].id);
+        template.find('.type').text(data[i].type);
+        template.find('.area').text(data[i].area);
+        template.find('.price').text(data[i].price);
+
+        list.append(template.html());
+      }
+    })
+
+    return App.initWeb3();
+  },
+
+  initWeb3: function() {
+    if (typeof web3 !== 'undefined') {
+      App.web3Provider = web3.currentProvider;
+      web3 = new Web3(web3.currentProvider);
+    } else {
+      App.web3Provider = new web3.providers.HttpProvider('http://localhost:8545');
+      web3 = new Web3(App.web3Provider);
+    }
+
+    return App.initContract();
+  },
+
+  initContract: function() {
+	$.getJSON('RealEstate.json', function(data) {
+      App.contracts.RealEstate = TruffleContract(data);
+      App.contracts.RealEstate.setProvider(App.web3Provider);
+    });
+  },
+
+  buyRealEstate: function() {	
+    var id = $('#id').val();
+    var name = $('#name').val();
+    var price = $('#price').val();
+    var age = $('#age').val();
+
+    web3.eth.getAccounts(function(error, accounts) {
+      if (error) {
+        console.log(error);
+      }
+
+      var account = accounts[0];
+      App.contracts.RealEstate.deployed().then(function(instance) {
+        var nameUtf8Encoded = utf8.encode(name);
+        return instance.buyRealEstate(id, web3.toHex(nameUtf8Encoded), age, { from: account, value: price });
+      }).then(function() {
+        $('#name').val('');
+        $('#age').val('');
+        $('#buyModal').modal('hide');       
+      }).catch(function(err) {
+        console.log(err.message);
+      });
+    });
+  },
+
+  loadRealEstates: function() {
+	
+  },
+	
+  listenToEvents: function() {
+	
+  }
+};
+
+$(function() {
+  $(window).load(function() {
+    App.init();
+  });
+
+  $('#buyModal').on('show.bs.modal', function(e) {
+    var id = $(e.relatedTarget).parent().find('.id').text();
+    var price = web3.toWei(parseFloat($(e.relatedTarget).parent().find('.price').text() || 0), "ether");
+
+    $(e.currentTarget).find('#id').val(id);
+    $(e.currentTarget).find('#price').val(price);
+  });
+});
+```
+
+이제 터미널로..
+
+```
+truffle migrate --compile-all --reset --network ganache
+npm run dev
+```
+
+
+<메타마스크 에러 해결> 
+settings 들어가서 connections 들어가서 Add site 탭에서 loaclhost입력하고 connect 버튼 누르니 해결되었다.
+
+
+**정리**
+어카운트 4에서 매물을 매입하면서 컨트랙의 buyrealEstate에 데이터를 넘겼고 함수 내에서 owner 계정으로 송금했다. 
+
+
+
+ 
+ 
+ 
 ---
 
 <sub>참고사이트 : https://hackernoon.com/hands-on-creating-your-own-local-private-geth-node-beginner-friendly-3d45902cc612</sub>
